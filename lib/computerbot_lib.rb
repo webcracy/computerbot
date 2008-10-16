@@ -282,46 +282,29 @@ class Bot
   
   def execute_twitter_whois_command(sender,message)
     
-    user = message.split[0]  
-    if user.match('@') != nil
-      user = user.gsub('@', '')
-    end # if
+    user = message.split.first.gsub('@', '')
     deliver(sender, TwitterHub::User.whois(user))
 
   end # twitter_whois
   
   def execute_twitter_follow_command(sender,message)
     
-    user = message.split[0]  
-    if user.match('@') != nil
-      user = user.gsub('@', '')
-    end # if
+    user = message.split.first.gsub('@', '')
     deliver(sender, TwitterHub::User.follow(user))
 
   end # twitter_follow
   
   def execute_twitter_unfollow_command(sender,message)
     
-    user = message.split[0]  
-    if user.match('@') != nil
-      user = user.gsub('@', '')
-    end # if
+    user = message.split.first.gsub('@', '')
     deliver(sender, TwitterHub::User.unfollow(user))
 
   end # twitter_unfollow
   
   def execute_twitter_user_command(sender,message)
     
-    user = message.split[0]
-    limit = message.split[1] if message.split[1] != nil
-    
-    if user.match('@') != nil
-      user = user.gsub('@', '')
-    end
-    
-    if limit == nil
-      limit = 20
-    end
+    user = message.split.first.gsub('@', '')
+    limit = message.split[1] || 20
     
     deliver(sender, TwitterHub::Timeline.user(user, limit))
     
@@ -334,16 +317,7 @@ class Bot
   def execute_twitter_replies_command(sender,message)
     deliver(sender, TwitterHub::Search.replies)
   end
-    
-  # these methods are helpers
-  def strip_html(str)
-    # The messages the bot sends are not HTML and most IM clients create links when they detect the structure
-    # So we strip HTML from the posts and let the IM clients work things out by themselves
-    str.strip!
-    tag_pat = %r,<(?:(?:/?)|(?:\s*)).*?>,
-    @content = str.gsub(tag_pat, '')
-  end
-    
+
 end # Bot 
 
 class Helper
@@ -370,21 +344,6 @@ class Helper
     return "#{result}"
   end # self.didwhen
 
-   def strip_html(str)
-     # The messages the bot sends are not HTML and most IM clients create links when they detect the structure
-     # So we strip HTML from the posts and let the IM clients work things out by themselves
-     str.strip!
-     tag_pat = %r,<(?:(?:/?)|(?:\s*)).*?>,
-     return str.gsub(tag_pat, '')
-   end
-   
-   def date_for(stamp)
-     day = stamp.day
-     month = stamp.month
-     year = stamp.month
-     return "#{day}/#{month}/#{year}"      
-   end # date_for
-  
 end # Helper
 
 end # Computer 
