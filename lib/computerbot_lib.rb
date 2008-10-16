@@ -7,29 +7,20 @@ require File.dirname(__FILE__) + '/jabber_bot.rb'
   # All plugins are loaded here.
 require File.dirname(__FILE__) + '/modules/twitta.rb'
 
-  # Load specified configuration file
-  
-config = YAML::load(File.open(File.dirname(__FILE__) + "/config/#{ENV_SET}.yml"))
-
-  # Initialize Jabber configuration
-  
-JABBER_USERNAME = config['jabber']['username']
-JABBER_PASSWORD = config['jabber']['password']
-JABBER_MASTER = config['jabber']['master']
-JABBER_STATUS = config['jabber']['status']
-
 module Computer
 
 class Bot
   
   def initialize
+    # Initialize Jabber configuration
+    @config = YAML::load(IO::read(File.dirname(__FILE__) + "/config/#{ENV_SET}.yml"))
         
     @@bot = Jabber::Bot.new(
-      :jabber_id => JABBER_USERNAME, 
-      :password  => JABBER_PASSWORD, 
-      :master    => JABBER_MASTER,
+      :jabber_id => @config['jabber']['username'], 
+      :password  => @config['jabber']['password'], 
+      :master    => @config['jabber']['master'],
       :presence => :chat,
-      :status => JABBER_STATUS,
+      :status => @config['jabber']['status'],
       :resource => 'Bot',
       :is_public => false
     )
@@ -38,14 +29,6 @@ class Bot
     
     @@bot.connect
     
-  end
-  
-  def self.deliver(sender, message)
-    if message.is_a?(Array)
-      message.each { |message| @@bot.deliver(sender, message)}
-    else
-      @@bot.deliver(sender, message)
-    end
   end
   
   def deliver(sender, message)
@@ -57,7 +40,6 @@ class Bot
   end
 
   def load_commands
-        
     
     @@bot.add_command(
       :syntax      => 'ping',
