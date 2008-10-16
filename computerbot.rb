@@ -25,25 +25,18 @@
 require 'rubygems'
 require 'daemons'
 
-def whatstheenv?(envi)
-  if envi != nil
-    return envi
-  elsif envi == nil
-    return 'config'
-  end
-end
+ENV_SET = ARGV[1] || 'config'
 
-ENV_SET = whatstheenv?(ARGV[1])
-
-if ARGV[0].to_s == 'start' or ARGV[0].to_s == 'run'
-  puts "___ Bot running in #{ENV_SET} environnement..."
-  puts "___ You can edit computerbot.rb to use other configs"
-  puts "___ Type 'ruby computerbot.rb stop' to disconnect the bot"
-elsif ARGV[0].to_s == 'restart'
-  puts "___ Bot restarted in #{ENV_SET} environnement..."
-  puts "___ Type 'ruby computerbot.rb stop' to disconnect the bot"
-else
-  puts "___ Bot disconnected."
+case ARGV[0].to_s
+  when 'start', 'run'
+      puts "___ Bot running in #{ENV_SET} environnement..."
+      puts "___ You can edit computerbot.rb to use other configs"
+      puts "___ Type 'ruby computerbot.rb stop' to disconnect the bot"
+  when 'restart'
+      puts "___ Bot restarted in #{ENV_SET} environnement..."
+      puts "___ Type 'ruby computerbot.rb stop' to disconnect the bot"
+  else
+    puts "___ Bot disconnected."
 end
 
 Daemons.run('lib/computerbot_lib.rb')
