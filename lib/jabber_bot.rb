@@ -97,7 +97,7 @@ module Jabber
       @config[:is_public] ||= false
 
       if @config[:verbose] && @config[:verbose] == true
-        @logger = Logger.new(STDERR)
+        @logger = Logger.new(@config[:verbose_file] || STDERR)
         @logger.level = @config[:verbose_level] || Logger::WARN
       else
         @logger = Logger.new('/dev/null')
