@@ -1,4 +1,5 @@
 require 'rubygems'
+require 'logger'
 require 'yaml'
 
   # Uses the jabber_bot.rb lib directly instead of the rubygem
@@ -22,7 +23,9 @@ class Bot
       :presence => :chat,
       :status => @config['jabber']['status'],
       :resource => 'Bot',
-      :is_public => false
+      :is_public => false,
+      :verbose => true,
+      :verbose_level => Logger::INFO
     )
     
     load_commands

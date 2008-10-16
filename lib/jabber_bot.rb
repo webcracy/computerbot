@@ -28,6 +28,7 @@
 
 require 'rubygems'
 require 'xmpp4r-simple'
+require 'logger'
 
 module Jabber
 
@@ -94,6 +95,13 @@ module Jabber
       @config = config
 
       @config[:is_public] ||= false
+
+      if @config[:verbose] && @config[:verbose] == true
+        @logger = Logger.new(STDERR)
+        @logger.level = @config[:verbose_level] || Logger::WARN
+      else
+        @logger = Logger.new('/dev/null')
+      end
 
       if @config[:name].nil? or @config[:name].length == 0
         @config[:name] = @config[:jabber_id].sub(/@.+$/, '')
@@ -178,6 +186,7 @@ module Jabber
     #  ) { rand(10).to_s }
     #
     def add_command(command, &callback)
+      @logger.info "Adding command #{command[:syntax]} => #{command[:regex]}"
       name = command_name(command[:syntax])
 
       # Add the command meta - used in the 'help' command response.
@@ -194,12 +203,16 @@ module Jabber
 
     # Connect the bot, making it available to accept commands.
     def connect
+      @logger.info "Connecting with jabber_id #{@config[:jabber_id]}"
       @jabber = Jabber::Simple.new(@config[:jabber_id], @config[:password])
 
+      @logger.info "Setting presence to #{@config[:presence]}/#{@config[:status]}/#{@config[:priority]}"
       presence(@config[:presence], @config[:status], @config[:priority])
 
+      @logger.info "Delivering first message to master"
       deliver(@config[:master], "#{@config[:name]} is online. (#{Time.now})")
 
+      @logger.info "Starting listen thread"
       start_listener_thread
     end
 
@@ -361,6 +374,8 @@ module Jabber
     def parse_command(sender, message) #:nodoc:
       is_master = master? sender
 
+      @logger.info "Received \"#{message.strip}\" from \"#{sender}\", processing..."
+
       if @config[:is_public] or is_master
         @commands[:spec].each do |command|
           if command[:is_public] or is_master
@@ -371,13 +386,21 @@ module Jabber
                 params = message.sub(/^\S+\s+(.*)$/, '\1')
               end
 
+              @logger.info "Triggered #{command[:regex]}!"
+
               response = command[:callback].call(sender, params)
-              deliver(sender, response) unless response.nil?
+
+              unless response.nil?
+                @logger.info "Delivering response #{response}"
+                deliver(sender, response)
+              end
               
               return
             end
           end
         end
+
+        @logger.info "Failled to match with any command"
 
         response = "I don't understand '#{message.strip}' Try saying 'help' " +
             "to see what commands I understand."
