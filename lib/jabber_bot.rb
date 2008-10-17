@@ -315,6 +315,7 @@ module Jabber
     def add_command_spec(command, callback) #:nodoc:
       @commands[:spec] << {
         :regex     => command[:regex],
+        :namespace => command[:namespace],
         :callback  => callback,
         :is_public => command[:is_public] || false
       }
@@ -342,7 +343,13 @@ module Jabber
           command = command[1]
 
           if !command[:is_alias] and (command[:is_public] or master? sender)
-            command[:syntax].each { |syntax| help_message += "#{syntax}\n" }
+            command[:syntax].each do |syntax|
+              if command[:namespace]
+                help_message += "#{command[:namespace]}:#{syntax}\n"
+              else
+                help_message += "#{syntax}\n"
+              end
+            end
             help_message += "  #{command[:description]}\n\n"
           end
         end
@@ -379,7 +386,18 @@ module Jabber
       if @config[:is_public] or is_master
         @commands[:spec].each do |command|
           if command[:is_public] or is_master
-            unless (message.strip =~ command[:regex]).nil?
+            message.strip!
+
+            # test namespace
+            if(command[:namespace])
+              if message =~ /^#{command[:namespace]}:/)
+                message.gsub! /^#{command[:namespace]}:/, ''
+              else
+                next
+              end
+            end
+
+            unless (message =~ command[:regex]).nil?
               params = nil
 
               if message.include? ' '
