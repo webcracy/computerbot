@@ -95,13 +95,7 @@ module Jabber
       @config = config
 
       @config[:is_public] ||= false
-
-      if @config[:verbose] && @config[:verbose] == true
-        @logger = Logger.new(@config[:verbose_file] || STDERR)
-        @logger.level = @config[:verbose_level] || Logger::WARN
-      else
-        @logger = Logger.new('/dev/null')
-      end
+      @logger = config[:logger]
 
       if @config[:name].nil? or @config[:name].length == 0
         @config[:name] = @config[:jabber_id].sub(/@.+$/, '')
@@ -305,6 +299,7 @@ module Jabber
 
       @commands[:meta][name] = {
         :syntax      => syntax.is_a?(Array) ? syntax : [syntax],
+        :namespace   => command[:namespace],
         :description => command[:description],
         :is_public   => command[:is_public] || false,
         :is_alias    => is_alias
@@ -380,24 +375,25 @@ module Jabber
     # bot master(s) will be silently ignored.
     def parse_command(sender, message) #:nodoc:
       is_master = master? sender
+      original_message = message.strip
 
       @logger.info "Received \"#{message.strip}\" from \"#{sender}\", processing..."
 
       if @config[:is_public] or is_master
         @commands[:spec].each do |command|
           if command[:is_public] or is_master
-            message.strip!
+            message = original_message.clone
 
             # test namespace
             if(command[:namespace])
-              if message =~ /^#{command[:namespace]}:/)
+              if message =~ /^#{command[:namespace]}:/
                 message.gsub! /^#{command[:namespace]}:/, ''
               else
                 next
               end
             end
 
-            unless (message =~ command[:regex]).nil?
+            if message =~ command[:regex]
               params = nil
 
               if message.include? ' '

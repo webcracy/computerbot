@@ -56,7 +56,13 @@ class TwitterHub
       @twitter_live_thread = Thread.new do 
         @bot.deliver(sender, "Live Twitter feed started at #{Time.now.to_s}")
         loop do
-          timeline = @twitterhub_client.timeline_for(:friends, :since_id => @bot.persistence.read(@namespace, 'unread'))
+          since_id = @bot.persistence.read(@namespace, 'unread')
+          timeline = nil
+          if since_id
+            timeline = @twitter.timeline_for(:friends, :since_id => @bot.persistence.read(@namespace, 'unread'))
+          else
+            timeline = @twitter.timeline_for(:friends)
+          end
 
           if timeline.length > 0
             @bot.deliver(sender, "A delivery at #{Time.now.to_s}")
@@ -262,6 +268,8 @@ class TwitterHub
       messages << "Last tweet from #{username}: #{tweet}"
 
       messages << "Use 'twitter.(un)follow #{username}' or 'twitter.user #{username} X' to retrieve X latest msgs."
+
+      messages.join("\n")
     rescue Twitter::RESTError => re 
       "User '#{username}' was not found. Please try again."
     end

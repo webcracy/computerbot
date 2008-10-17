@@ -1,8 +1,8 @@
 module Computer
   module Bot
     module Persistence
-      def initialize(config)
-        raise "initialize(config) should be implemented"
+      def initialize(config, logger)
+        raise "initialize(config, logger) should be implemented"
       end
 
       def write(namespace, key, value)
