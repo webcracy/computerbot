@@ -1,0 +1,30 @@
+general:
+  verbose: true
+  persistence:
+    file: persistence/yaml_storage.rb
+    class: YAMLStorage
+    config:
+      database: store/storage.yml
+
+bot:
+  username: yourbot@jabber.org 
+  password: password
+  master: you@jabber.org
+  status: Computer is ready.
+  presence: chat
+  resource: Bot
+  is_public: false
+
+modules:
+  - name: twitter
+    file: modules/twitter/twitter_module.rb
+    class: TwitterModule
+    config:
+      username: rubenfonseca
+      password: mysecretpassword
+      user_agent: ComputerBot
+      application_name: ComputerBot
+      application_version: v1
+      application_url: http://www.webcracy.org
+
+
