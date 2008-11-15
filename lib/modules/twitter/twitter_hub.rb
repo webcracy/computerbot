@@ -26,7 +26,7 @@ class TwitterHub
     end # begin        
 
     if posted_status 
-      return "Status updated: http://twitter.com/#{Twitter_username}/statuses/#{posted_status.id}"
+      return "Status updated: http://twitter.com/#{@username}/statuses/#{posted_status.id}"
     else 
       return "For no valid reason, I can't be sure this worked. You should check it out: http://twitter.com. Maybe it's a whale."
     end # if posted_status
@@ -231,10 +231,9 @@ class TwitterHub
     end # case query
   end # self.track
 
-  def self.replies
-    user = Twitter_username
+  def replies
     begin
-      search = JSON.load open("http://search.twitter.com/search.json?q='%40#{user}'")
+      search = JSON.load open("http://search.twitter.com/search.json?q='%40#{@username}'")
     rescue
       return "I couldn't reach the server, sorry. Please try again."
     end # begin
@@ -246,7 +245,7 @@ class TwitterHub
       end # search.entries.each
       return messages 
     else
-      return "Sorry, I found no replies to @#{user}."
+      return "Sorry, I found no replies to @#{@username}."
     end # if search.entries.length
   end # replies
   
