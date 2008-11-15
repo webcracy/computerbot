@@ -333,7 +333,20 @@ module Jabber
         # Display help for all commands
         help_message = "I understand the following commands:\n\n"
 
-        @commands[:meta].sort.each do |command|
+        sorted = @commands[:meta].sort do |a, b|
+          fst = a[1]
+          snd = b[1]
+
+          if fst[:namespace] && !snd[:namespace].nil?
+            1
+          elsif fst[:namespace].nil? && snd[:namespace]
+            -1
+          else
+            fst[:syntax].first <=> snd[:syntax].first
+          end
+        end
+
+        sorted.each do |command|
           # Thank you, Hash.sort
           command = command[1]
 
