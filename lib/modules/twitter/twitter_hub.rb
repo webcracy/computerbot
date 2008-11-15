@@ -53,40 +53,37 @@ class TwitterHub
   def live(sender, order)
     case order
     when 'start'
-      @twitter_live_thread = Thread.new do 
-        @bot.deliver(sender, "Live Twitter feed started at #{Time.now.to_s}")
-        loop do
-          since_id = @bot.persistence.read(@namespace, 'unread')
-          timeline = nil
-          if since_id
-            timeline = @twitter.timeline_for(:friends, :since_id => @bot.persistence.read(@namespace, 'unread'))
-          else
-            timeline = @twitter.timeline_for(:friends)
+      @bot.deliver(sender, "Live Twitter feed started at #{Time.now.to_s}")
+      @live_event = @bot.register_periodic_event(60) do
+        since_id = @bot.persistence.read(@namespace, 'unread')
+        timeline = nil
+        if since_id
+          timeline = @twitter.timeline_for(:friends, :since_id => @bot.persistence.read(@namespace, 'unread'))
+        else
+          timeline = @twitter.timeline_for(:friends)
+        end
+
+        if timeline.length > 0
+          @bot.deliver(sender, "A delivery at #{Time.now.to_s}")
+          @bot.persistence.write(@namespace, 'unread', timeline.first.id)
+
+          messages = timeline.inject([]) do |result, status|
+            result << TwitterHub::Helper.format_status(status)
+            result
           end
 
-          if timeline.length > 0
-            @bot.deliver(sender, "A delivery at #{Time.now.to_s}")
-            @bot.persistence.write(@namespace, 'unread', timeline.first.id)
-
-            messages = timeline.inject([]) do |result, status|
-              result << TwitterHub::Helper.format_status(status)
-              result
-            end
-
-            @bot.deliver(sender, messages)
-          end # if
-
-          sleep 60
-        end # loop
-      end # Thread.new
+          @bot.deliver(sender, messages)
+        end # if
+      end # block
     when 'status'
-      if @twitter_live_thread and @twitter_live_thread.alive?
+      if @live_event
         @bot.deliver(sender, 'The Live feed is running and seems OK. Tell your friends to tweet!')
       else
         @bot.deliver(sender, 'Live Twitter feed not running.')
       end # if
     when 'stop'
-      @twitter_live_thread.exit if @twitter_live_thread
+      @live_event.cancel if @live_event
+      @live_event = nil
       @bot.deliver(sender, 'Live Twitter feed stopped.')
     else
       @bot.deliver(sender, "Command #{order} not recognized")
@@ -169,70 +166,69 @@ class TwitterHub
   def track(sender, query)
     original_query = query
 
-    case query
-    when 'start'
+    if query != 'status' && query != 'stop'
       query = TwitterHub::Helper.format_query(query)
 
-      @track_live_thread = Thread.new do 
+      begin
+        initial_search = JSON.load open("http://search.twitter.com/search.json?q='#{query}'")
+      rescue
+        @bot.deliver(sender, "Hmmm, that keyword isn't returning anything.")
+      end # begin
+
+      if initial_search  
+        @bot.deliver(sender, "Now tracking '#{original_query}' (started at #{Time.now.to_s})")
+      end # if initial_ser
+
+      unless initial_search['results'].empty?
+        @bot.persistence.write(@namespace, 'track', initial_search['max_id'])
+        @bot.deliver(sender, "These were the latest 2 tweets before you started tracking: ")
+
+        messages = initial_search['results'].first(2).inject([]) do |result, status|
+          result << TwitterHub::Helper.format_search_status_json(status)
+          result
+        end
+
+        @bot.deliver(sender, messages)
+      else 
+        @bot.deliver(sender, "No previous results were found for your query '#{original_query}'. Tracking enabled.")
+      end # if initial_search['results']
+
+      @track_live = @bot.register_periodic_event(60) do 
+        since_id = @bot.persistence.read(@namespace, 'track')
+
         begin
-          initial_search = JSON.load open("http://search.twitter.com/search.json?q='#{query}'")
+          search = JSON.load open("http://search.twitter.com/search.json?q='#{query}'&since_id='#{since_id}'")
         rescue
-          @bot.deliver(sender, "Hmmm, that keyword isn't returning anything.")
         end # begin
 
-        if initial_search  
-          @bot.deliver(sender, "Now tracking '#{original_query}' (started at #{Time.now.to_s})")
-        end # if initial_ser
+        if !search['results'].empty? and search['max_id'] > since_id
+          @bot.deliver(sender, "New results for #{original_query} at #{Time.now.to_s}")
+          @bot.persistence.write(@namespace, search['max_id'])
 
-        unless initial_search['results'].empty?
-          @bot.persistence.write(@namespace, 'track', initial_search['max_id'])
-          @bot.deliver(sender, "These were the latest 2 tweets before you started tracking: ")
-
-          messages = initial_search['results'].first(2).inject([]) do |result, status|
-            result << TwitterHub::Helper.format_search_status_json(status)
+          messages = search['results'].inject([]) do |result, status|
+            result << TwitterHub::Helper.format_search_status_jsjon(status)
             result
           end
 
           @bot.deliver(sender, messages)
-        else 
-          @bot.deliver(sender, "No previous results were found for your query '#{original_query}'. Tracking enabled.")
-        end # if initial_search['results']
+        end # if        
+      end # track_live
+      return
+    end
 
-        loop do
-          since_id = @bot.persistence.read(@namespace, 'track')
-
-          begin
-            search = JSON.load open("http://search.twitter.com/search.json?q='#{query}'&since_id='#{since_id}'")
-          rescue
-          end # begin
-
-          if !search['results'].empty? and search['max_id'] > since_id
-
-            @bot.deliver(sender, "New results for #{original_query} at #{Time.now.to_s}")
-            @bot.persistence.write(@namespace, search['max_id'])
-
-            messages = search['results'].inject([]) do |result, status|
-              result << TwitterHub::Helper.format_search_status_jsjon(status)
-              result
-            end
-
-            @bot.deliver(sender, messages)
-          end # if        
-
-          sleep 60
-        end # loop
-      end # Thread.new
-
+    case query
     when 'status'
-      if @track_live_thread and @track_live_thread.alive?
+      if @track_live
         @bot.deliver(sender, 'The Track feed is running and seems OK. Your keyword must be unpopular :)')
       else
         @bot.deliver(sender, 'Live Track feed not running.')
       end # if
     when 'stop'
-      @track_live_thread.exit if @track_live_thread
+      @track_live.cancel if @track_live
+      @track_live = nil
+
       @bot.deliver(sender, 'Live Track feed stopped.')
-    end # if query
+    end # case query
   end # self.track
 
   def self.replies

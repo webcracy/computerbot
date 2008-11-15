@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'logger'
 require 'yaml'
+require 'eventmachine'
 
 $LOAD_PATH.unshift File.dirname(__FILE__)
 
@@ -50,7 +51,17 @@ module Computer
         configure_modules(@config['modules'])
         
         # Start the all things up
-        @bot.connect
+        EventMachine::run {
+          @operation = proc do
+            @bot.connect
+          end
+
+          @callback = proc do
+            puts "The end :-)"
+          end
+
+          EventMachine::defer(@operation, @callback)
+        }
       end
 
       def add_command(*args, &callback)
@@ -80,8 +91,7 @@ module Computer
           :description => 'Swiftly disconnects the bot',
           :regex       => /^bye$/,
           :is_public   => false
-        ) do |sender, message|
-          execute_bye_command(sender, message)
+        ) do |sender, message| execute_bye_command(sender, message)
         nil
         end    
       end # load_commands
@@ -90,7 +100,11 @@ module Computer
         deliver(sender, 'Bye bye.')
         @bot.disconnect
         exit
-      end  
+      end
+
+      def register_periodic_event(interval, &block)
+        PeriodicEvent.new(interval, &block)
+      end
 
       private
       def configure_persistence(config)
@@ -134,8 +148,28 @@ module Computer
           end
         end
       end
+
+      class PeriodicEvent < EventMachine::PeriodicTimer
+        def initialize(interval, &block)
+          super(interval)
+
+          @operation = proc do
+            block.call unless @cancelled
+          end
+
+          @callback = proc do
+            schedule unless @cancelled
+          end
+        end
+
+        def fire
+          EventMachine::defer(@operation, @callback)
+        end
+      end
     end # Base
   end # Bot 
 end # Computer 
 
 Computer::Bot::Base.new # executes everything when this file is called by computerbot.rb. You will never create another Bot object :)
+
+EventMachine.run { }
