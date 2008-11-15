@@ -27,4 +27,15 @@ modules:
       application_version: v1
       application_url: http://www.webcracy.org
 
+  - name: digg
+    file: modules/digg/digg_module.rb
+    class: DiggModule
+    config:
+      count: 3
+
+  - name: friendfeed
+    file: modules/friendfeed/friendfeed_module.rb
+    class: FriendfeeedModule
+    config:
+      key: 12376534620521ABCDEF
 
